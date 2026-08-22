@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Tally</title>
+<meta name="description" content="Tally — a live workout companion. Log sets, rest between them, nothing else.">
+<meta name="theme-color" content="#F0F0EE">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tally">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style id="app-styles">
+  :root{
+    color-scheme: light;
+    --paper:      #F0F0EE;
+    --paper-raise: #F8F8F6;
+    --ink:        #1D1D1D;
+    --ink-60:     #1D1D1D99;
+    --line:       #E1E1DF;
+    --line-strong: #D2D2D0;
+    --muted:      #98989A;
+    --muted-2:    #A6A6A4;
+    --signal:     #F2802A;
+    --accent-a:   #5B90F0;
+    --accent-b:   #FF9F3D;
+    --accent-grad: linear-gradient(135deg, var(--accent-a) 0%, var(--accent-b) 100%);
+    --accent-a-pale: #CBDDFB;
+    --accent-b-pale: #FFE2BC;
+    --accent-glow-grad: linear-gradient(135deg, var(--accent-a-pale) 0%, var(--accent-b-pale) 100%);
+    --good:       #4E6B4E;
+    --dot-1:      #C1694F;
+    --dot-2:      #C79A46;
+    --dot-3:      #6B7A8F;
+    --dot-4:      #6E8C6B;
+    --radius-sm:  6px;
+    --radius-pill: 999px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  button{ appearance:none; -webkit-appearance:none; font:inherit; color:inherit; }
+  html,body{ height:100%; background:var(--paper); }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+    user-select:none;
+  }
+  input{ user-select:text; }
+
+  .mono-label{
+    font-family:'Inter', sans-serif;
+    font-size:10.5px;
+    font-weight:300;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  #app{
+    max-width:560px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom);
+    position:relative;
+    isolation:isolate;
+  }
+  #view-root{ transition:padding-bottom 0.15s ease; }
+  #view-root.with-timer{ padding-bottom:230px; }
+  .home-glow{
+    position:fixed;
+    left:50%; bottom:-140px;
+    transform:translateX(-50%);
+    width:360px; height:360px;
+    max-width:90vw;
+    border-radius:50%;
+    background:var(--accent-glow-grad);
+    filter:blur(70px);
+    opacity:0.7;
+    pointer-events:none;
+    z-index:-1;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding:24px 22px 4px;
+  }
+  .topbar h1{
+    font-family:'Fraunces', serif;
+    font-size:17px;
+    font-weight:300;
+    letter-spacing:0.01em;
+    margin:0;
+  }
+  .logomark{ width:54px; height:16px; display:flex; align-items:center; color:var(--ink); }
+  .logomark svg{ width:100%; height:100%; }
+  .icon-btn{
+    width:36px; height:36px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none;
+    color:var(--ink);
+    cursor:pointer;
+    border-radius:var(--radius-sm);
+    flex-shrink:0;
+  }
+  .icon-btn:active{ background:var(--paper-raise); }
+  .icon-btn svg{ width:18px; height:18px; stroke-width:1.5; }
+  .topbar-actions{ display:flex; gap:2px; align-items:center; }
+  .text-action{
+    font-family:'Inter', sans-serif; font-size:10.5px; font-weight:400;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);
+    background:none; border:none; cursor:pointer; padding:6px;
+  }
+
+  .rule{ height:1px; background:var(--line); margin:16px 22px 8px; }
+  .section-label{ padding:0 22px 8px; }
+  .greeting-block{ padding:20px 22px 26px; }
+  .headline{
+    font-family:'Fraunces', serif;
+    font-size:38px;
+    font-weight:300;
+    letter-spacing:-0.03em;
+    margin:8px 0 0;
+    line-height:1.08;
+  }
+
+  /* ---------- Home ---------- */
+  .day-list{ padding:4px 22px 32px; display:flex; flex-direction:column; }
+  .day-card{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:20px 0;
+    border-top:1px solid var(--line);
+    cursor:pointer;
+  }
+  .day-list .day-card:last-child{ border-bottom:1px solid var(--line); }
+  .day-card-locked{ opacity:0.4; }
+  .day-card:active{ opacity:0.6; }
+  .day-card-left{ display:flex; align-items:center; gap:12px; }
+  .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .day-card .day-name{
+    font-family:'Fraunces', serif;
+    font-size:19px;
+    font-weight:300;
+  }
+  .day-card .day-meta{ margin-top:3px; }
+  .day-card .chev{ width:16px; height:16px; color:var(--muted); flex-shrink:0; margin-left:12px; stroke-width:1.5; }
+
+  .btn{
+    font-family:'Inter', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    border:none;
+    border-radius:var(--radius-sm);
+    padding:12px 18px;
+    cursor:pointer;
+  }
+  .btn-primary{ background:var(--ink); color:var(--paper); }
+  .btn-primary:active{ opacity:0.8; }
+  .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line-strong); }
+  .btn-ghost:active{ background:var(--paper-raise); }
+  .btn-danger{ background:transparent; border:1px solid #B3423A; color:#B3423A; }
+  .btn-danger:active{ opacity:0.85; }
+  .btn-block{ width:100%; }
+
+  /* ---------- Editor ---------- */
+  .rest-default-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px 20px;
+  }
+  .stepper{ display:flex; align-items:center; gap:12px; }
+  .stepper-btn{
+    width:28px; height:28px; border-radius:50%;
+    background:none; border:1px solid var(--line-strong);
+    font-size:15px; font-weight:400; color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stepper-btn:active{ background:var(--paper-raise); }
+  .stepper-val{ font-family:'Inter', sans-serif; font-weight:400; font-size:13px; min-width:36px; text-align:center; }
+
+  .tab-bar{
+    display:flex; gap:22px; padding:16px 22px 0;
+    overflow-x:auto; border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  .tab-bar::-webkit-scrollbar{ display:none; }
+  .tab{
+    font-family:'Fraunces', serif;
+    font-size:14px; font-weight:300;
+    background:none; border:none; color:var(--muted);
+    padding:0 0 14px;
+    cursor:pointer; white-space:nowrap;
+    border-bottom:1.5px solid transparent;
+    flex-shrink:0;
+  }
+  .tab.active{ color:var(--ink); font-weight:500; border-bottom-color:var(--ink); }
+  .tab.add-tab{ color:var(--muted); font-family:'Inter', sans-serif; font-weight:300; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+
+  .editor-body{ padding:22px; }
+  .day-panel-head{ display:flex; align-items:center; gap:8px; margin-bottom:20px; }
+  .day-name-input{
+    font-family:'Fraunces', serif;
+    font-size:22px; font-weight:300;
+    background:none; border:none; color:var(--ink);
+    padding:2px 0; width:100%;
+    border-bottom:1px solid transparent;
+  }
+  .day-name-input:focus{ outline:none; border-bottom-color:var(--line-strong); }
+
+  .ex-editor-card{
+    border-top:1px solid var(--line);
+    padding:20px 0;
+  }
+  .ex-editor-head{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .ex-name-input{
+    font-family:'Fraunces', serif;
+    font-size:15px; font-weight:300;
+    background:none; border:none; color:var(--ink);
+    padding:2px 0; width:100%;
+    border-bottom:1px solid transparent;
+  }
+  .ex-name-input:focus{ outline:none; border-bottom-color:var(--line-strong); }
+
+  .stat-input-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .stat-input-box{ display:flex; flex-direction:column; gap:6px; }
+  .stat-input-box input{
+    font-family:'Fraunces', serif;
+    font-size:16px; font-weight:300;
+    background:var(--paper-raise); border:none; border-radius:var(--radius-sm);
+    padding:10px 10px;
+    color:var(--ink);
+    width:100%;
+    text-align:left;
+  }
+  .stat-input-box input:focus{ outline:1.5px solid var(--ink); outline-offset:0; }
+
+  .mini-x{
+    width:26px; height:26px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; color:var(--muted); cursor:pointer; border-radius:var(--radius-sm);
+  }
+  .mini-x:active{ background:var(--paper-raise); color:var(--ink); }
+  .mini-x svg{ width:15px; height:15px; stroke-width:1.5; }
+
+  .add-row-btn{
+    font-family:'Inter', sans-serif;
+    font-size:10.5px; font-weight:400; letter-spacing:0.08em; text-transform:uppercase;
+    background:none; border:1px dashed var(--line-strong); color:var(--muted);
+    border-radius:var(--radius-sm); padding:12px; width:100%; cursor:pointer; margin-top:16px;
+  }
+  .add-row-btn:active{ background:var(--paper-raise); }
+
+  /* ---------- Session ---------- */
+  .session-topbar{ padding:22px 22px 0; display:flex; align-items:center; justify-content:space-between; }
+  .session-title{ display:flex; align-items:center; gap:9px; }
+  .session-title .name{ font-family:'Inter', sans-serif; font-weight:400; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink); }
+
+  .progress-block{ padding:14px 22px; background:var(--paper); position:sticky; top:0; z-index:5; }
+  .progress-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .progress-stats{
+    font-family:'Inter', sans-serif;
+    font-size:11px; font-weight:300; letter-spacing:0.02em;
+    color:var(--ink-60);
+  }
+  .progress-track{ height:6px; border-radius:var(--radius-pill); background:var(--line); overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--accent-grad); border-radius:var(--radius-pill); transition:width 0.3s ease; }
+
+  .session-body{ padding:16px 22px 40px; display:flex; flex-direction:column; }
+  .exercise-section{ padding:20px 0; border-top:1px solid var(--line); }
+  .exercise-section:last-child{ border-bottom:1px solid var(--line); }
+  .ex-section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .ex-name{ font-family:'Fraunces', serif; font-size:19px; font-weight:300; }
+
+  .target-row{ display:flex; gap:30px; margin-bottom:18px; }
+  .target-item .t-label{ margin-bottom:4px; }
+  .target-item .t-val{ font-family:'Fraunces', serif; font-size:19px; font-weight:300; }
+  .target-item .t-unit{ font-family:'Fraunces', serif; font-size:12px; font-weight:300; color:var(--muted); margin-left:2px; }
+
+  .pill-row{ display:flex; flex-wrap:wrap; gap:12px; }
+  .pill{
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    font-weight:500;
+    border-radius:50%;
+    cursor:pointer;
+    background:none;
+    padding:0;
+    overflow:hidden;
+    -webkit-appearance:none;
+    appearance:none;
+    background-clip:padding-box;
+    -webkit-background-clip:padding-box;
+  }
+  .pill.pending{ border:1.5px dashed var(--line-strong); color:var(--muted-2); }
+  .pill.done{ background-image:var(--accent-grad); color:#FFFFFF; border:1.5px solid transparent; }
+  .pill:active{ transform:scale(0.94); }
+  .pill.done svg{ width:15px; height:15px; stroke-width:2; }
+
+  .completion-card{
+    text-align:center;
+    padding:36px 20px 8px;
+  }
+  .completion-badge{
+    width:52px; height:52px;
+    margin:0 auto 18px;
+    border-radius:50%;
+    background:var(--accent-grad);
+    color:#FFFFFF;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .completion-badge svg{ width:24px; height:24px; stroke-width:2.4; }
+  .completion-title{
+    font-family:'Fraunces', serif;
+    font-size:21px; font-weight:300;
+    margin-bottom:8px;
+  }
+  .completion-sub{
+    font-size:14px; color:var(--muted); margin:0 0 22px; line-height:1.5;
+  }
+
+  /* ---------- Rest timer banner ---------- */
+  .rest-banner{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    max-width:560px;
+    margin:0 auto;
+    background:var(--accent-grad);
+    color:#FFFFFF;
+    padding:22px 22px calc(22px + env(safe-area-inset-bottom));
+    transform:translateY(320px);
+    transition:transform 0.28s cubic-bezier(.2,.9,.3,1.1);
+    z-index:50;
+  }
+  .rest-banner.show{ transform:translateY(0); }
+  .rest-banner-top{ display:flex; align-items:center; justify-content:space-between; }
+  .rest-banner-label{
+    font-family:'Inter', sans-serif;
+    font-size:10.5px; font-weight:400; letter-spacing:0.12em; text-transform:uppercase;
+    color:#FFFFFF;
+  }
+  .rest-skip{
+    font-family:'Inter', sans-serif;
+    font-size:10.5px; font-weight:400; letter-spacing:0.08em; text-transform:uppercase;
+    background:none; border:none; color:#FFFFFF; opacity:0.75; cursor:pointer; padding:6px;
+  }
+  .rest-clock{
+    font-family:'Fraunces', serif;
+    font-size:56px;
+    font-weight:300;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.01em;
+    text-align:center;
+    margin:4px 0 14px;
+    line-height:1;
+    color:#FFFFFF;
+  }
+  .rest-progress{
+    height:3px;
+    border-radius:var(--radius-pill);
+    background:rgba(255,255,255,0.28);
+    overflow:hidden;
+    margin-bottom:18px;
+  }
+  .rest-progress-fill{ height:100%; background:#FFFFFF; border-radius:var(--radius-pill); transition:width 1s linear; }
+  .rest-adjust-row{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .rest-adjust-btn{
+    font-family:'Inter', sans-serif;
+    font-size:12px; font-weight:500;
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.3);
+    color:#FFFFFF;
+    border-radius:var(--radius-pill);
+    padding:10px 20px;
+    cursor:pointer;
+    flex:1;
+    text-align:center;
+  }
+  .rest-adjust-btn:active{ background:rgba(255,255,255,0.24); }
+
+  /* ---------- Modal (discard confirm) ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(43,42,38,0.35);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:24px;
+  }
+  .modal-card{
+    background:var(--paper); border-radius:var(--radius-sm);
+    padding:24px 22px; width:100%; max-width:320px;
+    border:1px solid var(--line);
+  }
+  .modal-card p{ font-size:14px; color:var(--ink-60); margin:8px 0 20px; line-height:1.45; font-weight:400; }
+  .modal-title{ font-family:'Fraunces', serif; font-size:17px; font-weight:300; margin:0; }
+  .modal-actions{ display:flex; gap:8px; }
+  .modal-actions .btn{ flex:1; }
+
+  ::selection{ background:var(--ink); color:var(--paper); }
+</style>
+</head>
+<body>
+<div id="app"><div id="view-root"></div><div class="rest-banner" id="rest-banner"></div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ Storage shim ============
+     Uses the Claude artifact window.storage API when present (claude.ai),
+     falls back to browser localStorage everywhere else (e.g. GitHub Pages). */
+  var storageAPI = (function(){
+    if (window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function'){
+      return window.storage;
+    }
+    return {
+      get: function(key){
+        try {
+          var v = localStorage.getItem(key);
+          return Promise.resolve(v !== null ? { key: key, value: v } : null);
+        } catch(e){ return Promise.reject(e); }
+      },
+      set: function(key, value){
+        try {
+          localStorage.setItem(key, value);
+          return Promise.resolve({ key: key, value: value });
+        } catch(e){ return Promise.reject(e); }
+      }
+    };
+  })();
+
+  /* ============ State ============ */
+  var routine = { restSeconds: 90, days: [] };
+  var view = 'home'; // home | editor | session
+  var currentDayId = null;
+  var editorDayId = null;
+  var sessionDone = {}; // "exId:idx" -> true
+  var pendingSync = null;
+
+  var timer = { active:false, remaining:0, duration:0, exerciseName:'', intervalId:null, sourceKey:null };
+  var pip = { win:null };
+  var notifPermRequested = false;
+  var audioCtx = null;
+
+  var pendingDiscard = false;
+  var pendingConfirm = null; // { message, onConfirm } | null
+  var blockedDayId = null;
+  var editingExercise = null; // { dayId, exId } | null
+
+  var DOT_COLORS = ['var(--dot-1)','var(--dot-2)','var(--dot-3)','var(--dot-4)'];
+
+  function sessionHasProgress(){
+    if (timer.active) return true;
+    for (var k in sessionDone) if (sessionDone[k]) return true;
+    return false;
+  }
+
+  /* ============ Utilities ============ */
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+
+  function findDay(id){
+    for (var i=0;i<routine.days.length;i++) if (routine.days[i].id===id) return routine.days[i];
+    return null;
+  }
+  function dayIndex(id){
+    for (var i=0;i<routine.days.length;i++) if (routine.days[i].id===id) return i;
+    return 0;
+  }
+  function dotColor(id){ return DOT_COLORS[dayIndex(id) % DOT_COLORS.length]; }
+
+  function fmtClock(sec){
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec/60), s = sec%60;
+    return m + ':' + (s<10?'0':'') + s;
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function dayStats(day){
+    var totalSets = 0, doneSets = 0, exercisesDone = 0;
+    day.exercises.forEach(function(ex){
+      var exAllDone = ex.sets > 0;
+      for (var i=0;i<ex.sets;i++){
+        totalSets++;
+        if (sessionDone[ex.id+':'+i]) doneSets++; else exAllDone = false;
+      }
+      if (exAllDone) exercisesDone++;
+    });
+    return { totalSets:totalSets, doneSets:doneSets, exercisesDone:exercisesDone, totalExercises:day.exercises.length };
+  }
+
+  function progressLabel(pct){
+    if (pct <= 0) return 'Progress';
+    if (pct < 40) return 'Keep going';
+    if (pct < 70) return 'Nice pace';
+    if (pct < 100) return 'You\u2019re almost there';
+    return 'Complete';
+  }
+
+  /* ============ Persistent storage (routine sync) ============ */
+  var SEED_VERSION = 'dion-ppl-v1';
+
+  function loadRoutine(){
+    return Promise.all([
+      storageAPI.get('routine', false).catch(function(){ return null; }),
+      storageAPI.get('seedVersion', false).catch(function(){ return null; })
+    ]).then(function(results){
+      var routineRes = results[0];
+      var seedRes = results[1];
+      var seedApplied = seedRes && seedRes.value === SEED_VERSION;
+
+      if (!seedApplied){
+        routine = defaultRoutine();
+        saveRoutine();
+        storageAPI.set('seedVersion', SEED_VERSION, false).catch(function(){});
+        return;
+      }
+
+      if (routineRes && routineRes.value){
+        try { routine = JSON.parse(routineRes.value); if (!routine.restSeconds) routine.restSeconds = 90; }
+        catch(e){ routine = defaultRoutine(); }
+      } else {
+        routine = defaultRoutine();
+        saveRoutine();
+      }
+    }).catch(function(){
+      routine = defaultRoutine();
+    });
+  }
+
+  function saveRoutine(){
+    clearTimeout(pendingSync);
+    pendingSync = setTimeout(function(){
+      storageAPI.set('routine', JSON.stringify(routine), false).catch(function(){});
+    }, 300);
+  }
+
+  function defaultRoutine(){
+    function ex(name, sets, reps, weight){ return { id: uid(), name: name, sets: sets, reps: reps, weight: weight }; }
+    return {
+      restSeconds: 90,
+      days: [
+        { id: uid(), name: 'Push', exercises: [
+          ex('Dumbbell Bench Press', 3, 10, 9),
+          ex('Incline Dumbbell Press', 3, 10, 9),
+          ex('Overhead Tricep Extension', 3, 12, 9),
+          ex('Seated Shoulder Press', 3, 8, 7),
+          ex('Dumbbell Lateral Raise', 3, 15, 4)
+        ]},
+        { id: uid(), name: 'Pull', exercises: [
+          ex('Chest-Supported Dumbbell Row', 3, 10, 10),
+          ex('One-Arm Dumbbell Row', 3, 10, 10),
+          ex('Dumbbell Pullover', 3, 12, 10),
+          ex('Hammer Curl', 3, 10, 6),
+          ex('Incline Dumbbell Curl', 2, 10, 6),
+          ex('Rear-Delt Fly', 3, 12, 4)
+        ]},
+        { id: uid(), name: 'Legs', exercises: [
+          ex('Dumbbell Romanian Deadlift', 3, 12, 13),
+          ex('Bulgarian Split Squat', 3, 10, 13),
+          ex('Goblet Squat', 3, 12, 13),
+          ex('Dumbbell Hip Thrust', 3, 15, 13),
+          ex('Fire Hydrants', 3, 8, 0),
+          ex('Single-Leg Calf Raise', 3, 15, 0)
+        ]}
+      ]
+    };
+  }
+
+  /* ============ Audio / haptics / notify ============ */
+  function playBeep(){
+    try{
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      [0, 0.18].forEach(function(delay){
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, t0+delay);
+        gain.gain.exponentialRampToValueAtTime(0.25, t0+delay+0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0+delay+0.16);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0+delay);
+        osc.stop(t0+delay+0.18);
+      });
+    }catch(e){}
+  }
+
+  function vibrate(pattern){
+    try{ if (navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+  }
+
+  function maybeNotify(title, body){
+    try{
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted' && document.hidden){
+        new Notification(title, { body: body, silent:false });
+      }
+    }catch(e){}
+  }
+
+  function ensureNotifPermission(){
+    try{
+      if (!notifPermRequested && 'Notification' in window && Notification.permission === 'default'){
+        notifPermRequested = true;
+        Notification.requestPermission();
+      }
+    }catch(e){}
+  }
+
+  /* ============ Timer ============ */
+  function startRestTimer(seconds, exerciseName, sourceKey){
+    clearInterval(timer.intervalId);
+    ensureNotifPermission();
+    timer.active = true;
+    timer.duration = seconds;
+    timer.remaining = seconds;
+    timer.exerciseName = exerciseName;
+    timer.sourceKey = sourceKey || null;
+    timer.intervalId = setInterval(tickTimer, 1000);
+    renderTimer();
+  }
+
+  function tickTimer(){
+    timer.remaining -= 1;
+    if (timer.remaining <= 0){
+      timer.remaining = 0;
+      clearInterval(timer.intervalId);
+      playBeep();
+      vibrate([200,80,200]);
+      maybeNotify('Rest over', timer.exerciseName ? timer.exerciseName + ' \u2014 back at it' : 'Time for your next set');
+      setTimeout(function(){
+        timer.active = false;
+        timer.sourceKey = null;
+        renderTimer();
+      }, 2200);
+    }
+    renderTimer();
+  }
+
+  function adjustTimer(delta){
+    if (!timer.active) return;
+    timer.remaining = Math.max(0, timer.remaining + delta);
+    timer.duration = Math.max(timer.duration, timer.remaining);
+    renderTimer();
+  }
+
+  function skipTimer(){
+    clearInterval(timer.intervalId);
+    timer.active = false;
+    timer.sourceKey = null;
+    renderTimer();
+  }
+
+  /* ============ Rendering ============ */
+  var appEl = document.getElementById('app');
+  var viewRoot = document.getElementById('view-root');
+
+  function render(){
+    if (view === 'home') renderHome();
+    else if (view === 'editor') renderEditor();
+    else if (view === 'session') renderSession();
+    renderTimer();
+  }
+
+  function iconClose(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>';
+  }
+  function iconBack(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  }
+  function iconChev(){
+    return '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  }
+  function iconPip(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>';
+  }
+  function iconCheck(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  }
+  function iconEdit(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  }
+
+  function logomark(){
+    return '<svg viewBox="0 0 54 16" fill="none">' +
+      '<circle cx="6" cy="8" r="5" fill="none" stroke="var(--ink-60)" stroke-width="1.3" stroke-dasharray="2 2"/>' +
+      '<circle cx="27" cy="8" r="5" fill="none" stroke="var(--ink-60)" stroke-width="1.3" stroke-dasharray="2 2"/>' +
+      '<circle cx="48" cy="8" r="5" fill="none" stroke="var(--ink-60)" stroke-width="1.3" stroke-dasharray="2 2"/></svg>';
+  }
+
+  function renderHome(){
+    var html = '';
+    html += '<div class="home-glow"></div>';
+    html += '<div class="topbar"><span class="logomark">' + logomark() + '</span>' +
+      '<div class="topbar-actions">' +
+      '<button class="text-action" data-action="open-editor">Edit</button>' +
+      '</div></div>';
+    if (!routine.days.length){
+      html += '<div class="rule"></div><p style="padding:20px 22px; color:var(--muted); font-size:13px;">No days yet \u2014 tap Edit to add one.</p>';
+    } else {
+      html += '<div class="greeting-block">' +
+        '<div class="mono-label">Hey Dion,</div>' +
+        '<h2 class="headline">What\u2019s the move?</h2></div>';
+      var activeDay = (currentDayId && sessionHasProgress()) ? currentDayId : null;
+      html += '<div class="day-list">';
+      routine.days.forEach(function(day){
+        var exCount = day.exercises.length;
+        var isActive = activeDay === day.id;
+        var isLocked = activeDay && !isActive;
+        html += '<div class="day-card' + (isLocked?' day-card-locked':'') + '" data-action="open-session" data-day="' + day.id + '">' +
+          '<div><div class="day-name">' + escapeHtml(day.name || 'Untitled day') + '</div>' +
+          '<div class="mono-label day-meta">' + (isActive ? 'In progress' : (exCount + ' exercise' + (exCount!==1?'s':''))) + '</div></div>' +
+          iconChev() + '</div>';
+      });
+      html += '</div>';
+    }
+    if (blockedDayId){
+      html += renderBlockedModal();
+    }
+
+    viewRoot.innerHTML = html;
+  }
+
+  function renderBlockedModal(){
+    var current = findDay(currentDayId);
+    return '<div class="modal-overlay" data-action="blocked-cancel">' +
+      '<div class="modal-card">' +
+      '<p class="modal-title">Finish up first</p>' +
+      '<p>You\u2019ve got ' + escapeHtml(current ? current.name : 'a workout') + ' in progress. Finish or discard it before starting another.</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" data-action="blocked-cancel">Cancel</button>' +
+      '<button class="btn btn-primary" data-action="blocked-resume">Resume</button>' +
+      '</div></div></div>';
+  }
+
+  function renderEditor(){
+    if (!editorDayId && routine.days.length) editorDayId = routine.days[0].id;
+    var html = '';
+    html += '<div class="topbar"><div class="topbar-actions" style="margin-left:-15.75px">' +
+      '<button class="icon-btn" data-action="close-editor" aria-label="Back">' + iconBack() + '</button></div>' +
+      '<h1>Edit routine</h1><span style="width:36px"></span></div>';
+
+    html += '<div class="rest-default-row"><span class="mono-label">Rest timer default</span>' +
+      '<div class="stepper">' +
+      '<button class="stepper-btn" data-action="rest-default" data-delta="-15">\u2212</button>' +
+      '<span class="stepper-val">' + routine.restSeconds + 's</span>' +
+      '<button class="stepper-btn" data-action="rest-default" data-delta="15">+</button>' +
+      '</div></div>';
+
+    html += '<div class="tab-bar">';
+    routine.days.forEach(function(day){
+      html += '<button class="tab' + (day.id===editorDayId?' active':'') + '" data-action="select-tab" data-day="' + day.id + '">' + escapeHtml(day.name || 'Untitled') + '</button>';
+    });
+    html += '<button class="tab add-tab" data-action="add-day">+ Add day</button>';
+    html += '</div>';
+
+    var day = findDay(editorDayId);
+    html += '<div class="editor-body">';
+    if (day){
+      html += '<div class="day-panel-head">' +
+        '<input class="day-name-input" data-field="day-name" data-day="' + day.id + '" value="' + escapeHtml(day.name) + '" placeholder="Day name">' +
+        '<button class="mini-x" data-action="del-day" data-day="' + day.id + '" aria-label="Delete day">' + iconClose() + '</button></div>';
+
+      day.exercises.forEach(function(ex){
+        html += '<div class="ex-editor-card" data-ex="' + ex.id + '">';
+        html += '<div class="ex-editor-head">' +
+          '<input class="ex-name-input" data-field="ex-name" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + escapeHtml(ex.name) + '" placeholder="Exercise name">' +
+          '<button class="mini-x" data-action="del-ex" data-day="' + day.id + '" data-ex="' + ex.id + '" aria-label="Delete exercise">' + iconClose() + '</button></div>';
+
+        html += '<div class="stat-input-row">' +
+          '<div class="stat-input-box"><span class="mono-label">Sets</span>' +
+          '<input type="number" min="1" step="1" data-field="ex-sets" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + ex.sets + '"></div>' +
+          '<div class="stat-input-box"><span class="mono-label">Reps</span>' +
+          '<input type="number" min="0" step="1" data-field="ex-reps" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + ex.reps + '"></div>' +
+          '<div class="stat-input-box"><span class="mono-label">Weight</span>' +
+          '<input type="text" inputmode="decimal" data-field="ex-weight" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + (ex.weight > 0 ? ex.weight : 'Bodyweight') + '" placeholder="kg or Bodyweight"></div>' +
+          '</div>';
+        html += '</div>'; // ex-editor-card
+      });
+
+      html += '<button class="add-row-btn" data-action="add-ex" data-day="' + day.id + '">+ Add exercise</button>';
+    } else {
+      html += '<p style="color:var(--muted); font-size:13px; margin:8px 0 16px;">No days yet.</p>' +
+        '<button class="btn btn-ghost" data-action="restore-routine">Restore my routine</button>';
+    }
+    html += '</div>'; // editor-body
+    html += renderConfirmModal();
+
+    viewRoot.innerHTML = html;
+  }
+
+  function renderSession(){
+    var day = findDay(currentDayId);
+    if (!day){ view = 'home'; renderHome(); return; }
+
+    var pipSupported = ('documentPictureInPicture' in window);
+    var stats = dayStats(day);
+
+    var html = '';
+    html += '<div class="session-topbar">' +
+      '<button class="icon-btn" data-action="go-home" aria-label="Back" style="margin-left:-15.75px">' + iconBack() + '</button>' +
+      '<div class="session-title"><span class="name">' + escapeHtml(day.name) + '</span></div>' +
+      '<div class="topbar-actions" style="margin-right:-13.5px">' +
+      (pipSupported ? '<button class="icon-btn" data-action="toggle-pip" aria-label="Pop out">' + iconPip() + '</button>' : '') +
+      '<button class="icon-btn" data-action="discard-open" aria-label="Discard workout">' + iconClose() + '</button>' +
+      '</div></div>';
+
+    var setsPct = stats.totalSets ? Math.round((stats.doneSets/stats.totalSets)*100) : 0;
+    html += '<div class="progress-block">' +
+      '<div class="progress-head"><span class="mono-label">' + progressLabel(setsPct) + '</span>' +
+      '<span class="progress-stats">' + stats.doneSets + '/' + stats.totalSets + ' sets &middot; ' + stats.exercisesDone + '/' + stats.totalExercises + ' exercises</span></div>' +
+      '<div class="progress-track"><div class="progress-fill" style="width:' + setsPct + '%"></div></div>' +
+      '</div>';
+
+    html += '<div class="session-body" id="session-body">';
+    day.exercises.forEach(function(ex){
+      html += '<div class="exercise-section">';
+      html += '<div class="ex-section-head"><span class="ex-name">' + escapeHtml(ex.name) + '</span>' +
+        '<button class="mini-x" data-action="edit-from-session" data-day="' + day.id + '" data-ex="' + ex.id + '" aria-label="Edit exercise">' + iconEdit() + '</button></div>';
+
+      html += '<div class="target-row">' +
+        '<div class="target-item"><div class="mono-label t-label">Sets</div><span class="t-val">' + ex.sets + '</span></div>' +
+        '<div class="target-item"><div class="mono-label t-label">Reps</div><span class="t-val">' + ex.reps + '</span></div>' +
+        '<div class="target-item"><div class="mono-label t-label">Weight</div>' + (ex.weight > 0 ? '<span class="t-val">' + ex.weight + '</span><span class="t-unit">kg</span>' : '<span class="t-val" style="font-size:15px;">Bodyweight</span>') + '</div>' +
+        '</div>';
+
+      html += '<div class="pill-row">';
+      for (var i=0;i<ex.sets;i++){
+        var done = !!sessionDone[ex.id+':'+i];
+        html += '<button class="pill ' + (done?'done':'pending') + '" data-action="toggle-set" data-ex="' + ex.id + '" data-idx="' + i + '" data-rest="' + routine.restSeconds + '" data-exname="' + escapeHtml(ex.name) + '">' +
+          (done ? iconCheck() : (i+1)) + '</button>';
+      }
+      html += '</div></div>'; // pill-row, exercise-section
+    });
+    if (stats.totalSets && stats.doneSets === stats.totalSets){
+      html += renderCompletionCard(day);
+    }
+    html += '</div>'; // session-body
+
+    if (pendingDiscard){
+      html += renderDiscardModal();
+    }
+    if (editingExercise && editingExercise.dayId === day.id){
+      html += renderExerciseEditModal(day, editingExercise.exId);
+    }
+    html += renderConfirmModal();
+
+    viewRoot.innerHTML = html;
+    renderTimerInto(document.getElementById('rest-banner'));
+    if (pip.win) renderPipContent();
+  }
+
+  function renderCompletionCard(day){
+    return '<div class="completion-card">' +
+      '<div class="completion-badge">' + iconCheck() + '</div>' +
+      '<div class="completion-title">Workout complete</div>' +
+      '<p class="completion-sub">Nice work \u2014 every set in ' + escapeHtml(day.name) + ' is logged.</p>' +
+      '<button class="btn btn-primary btn-block" data-action="end-workout">End workout</button>' +
+      '</div>';
+  }
+
+  function renderExerciseEditModal(day, exId){
+    var ex = day.exercises.find(function(x){ return x.id === exId; });
+    if (!ex) return '';
+    return '<div class="modal-overlay" data-action="exedit-close">' +
+      '<div class="modal-card">' +
+      '<div class="ex-editor-head" style="margin-bottom:16px;">' +
+      '<input class="ex-name-input" data-field="ex-name" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + escapeHtml(ex.name) + '" placeholder="Exercise name">' +
+      '<button class="mini-x" data-action="exedit-delete" data-day="' + day.id + '" data-ex="' + ex.id + '" aria-label="Delete exercise">' + iconClose() + '</button></div>' +
+      '<div class="stat-input-row" style="margin-bottom:20px;">' +
+      '<div class="stat-input-box"><span class="mono-label">Sets</span>' +
+      '<input type="number" min="1" step="1" data-field="ex-sets" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + ex.sets + '"></div>' +
+      '<div class="stat-input-box"><span class="mono-label">Reps</span>' +
+      '<input type="number" min="0" step="1" data-field="ex-reps" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + ex.reps + '"></div>' +
+      '<div class="stat-input-box"><span class="mono-label">Weight</span>' +
+      '<input type="text" inputmode="decimal" data-field="ex-weight" data-day="' + day.id + '" data-ex="' + ex.id + '" value="' + (ex.weight > 0 ? ex.weight : 'Bodyweight') + '" placeholder="kg or Bodyweight"></div>' +
+      '</div>' +
+      '<button class="btn btn-primary btn-block" data-action="exedit-close">Done</button>' +
+      '</div></div>';
+  }
+
+  function renderDiscardModal(){
+    return '<div class="modal-overlay" data-action="discard-cancel">' +
+      '<div class="modal-card">' +
+      '<p class="modal-title">Discard this workout?</p>' +
+      '<p>Your logged sets for this session won\u2019t be kept.</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" data-action="discard-cancel">Cancel</button>' +
+      '<button class="btn btn-danger" data-action="discard-confirm">Discard</button>' +
+      '</div></div></div>';
+  }
+
+  function renderConfirmModal(){
+    if (!pendingConfirm) return '';
+    return '<div class="modal-overlay" data-action="confirm-cancel">' +
+      '<div class="modal-card">' +
+      '<p class="modal-title">' + escapeHtml(pendingConfirm.title || 'Are you sure?') + '</p>' +
+      '<p>' + escapeHtml(pendingConfirm.message || '') + '</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" data-action="confirm-cancel">Cancel</button>' +
+      '<button class="btn btn-danger" data-action="confirm-yes">' + escapeHtml(pendingConfirm.confirmLabel || 'Delete') + '</button>' +
+      '</div></div></div>';
+  }
+
+  function timerBannerHTML(){
+    if (!timer.active) return '';
+    var pct = timer.duration > 0 ? Math.max(0, Math.min(100, (timer.remaining/timer.duration)*100)) : 0;
+    return '<div class="rest-banner-top"><span class="rest-banner-label">Resting</span>' +
+      '<button class="rest-skip" data-action="skip-timer">Skip</button></div>' +
+      '<div class="rest-clock">' + fmtClock(timer.remaining) + '</div>' +
+      '<div class="rest-progress"><div class="rest-progress-fill" style="width:' + pct + '%"></div></div>' +
+      '<div class="rest-adjust-row">' +
+      '<button class="rest-adjust-btn" data-action="adjust-timer" data-delta="-15">\u221215s</button>' +
+      '<button class="rest-adjust-btn" data-action="adjust-timer" data-delta="15">+15s</button>' +
+      '</div>';
+  }
+
+  function renderTimer(){
+    var banner = document.getElementById('rest-banner');
+    renderTimerInto(banner);
+    if (viewRoot) viewRoot.classList.toggle('with-timer', timer.active);
+    if (pip.win) renderPipContent();
+  }
+
+  function renderTimerInto(banner){
+    if (!banner) return;
+    banner.innerHTML = timerBannerHTML();
+    if (timer.active) banner.classList.add('show'); else banner.classList.remove('show');
+  }
+
+  /* ============ Picture-in-Picture ============ */
+  function togglePip(){
+    if (pip.win){ pip.win.close(); return; }
+    if (!('documentPictureInPicture' in window)) return;
+    documentPictureInPicture.requestWindow({ width: 340, height: 280 }).then(function(pw){
+      pip.win = pw;
+      var styleText = document.getElementById('app-styles').textContent;
+      var style = pw.document.createElement('style');
+      style.textContent = styleText + '\nbody{margin:0;padding:14px;background:var(--paper);} .pip-root{display:flex;flex-direction:column;gap:10px;} .pip-ex{font-family:"Fraunces",serif;font-weight:300;font-size:15px;} .pip-banner{position:static;transform:none;margin-top:6px;} .pip-banner.hidden{display:none;}';
+      pw.document.head.appendChild(style);
+      var root = pw.document.createElement('div');
+      root.className = 'pip-root';
+      root.id = 'pip-root';
+      pw.document.body.appendChild(root);
+      pw.addEventListener('pagehide', function(){ pip.win = null; });
+      renderPipContent();
+    }).catch(function(){});
+  }
+
+  function renderPipContent(){
+    if (!pip.win) return;
+    var root = pip.win.document.getElementById('pip-root');
+    if (!root) return;
+    var day = findDay(currentDayId);
+    var stats = day ? dayStats(day) : {doneSets:0,totalSets:0};
+    var html = '<div class="mono-label">' + (day ? escapeHtml(day.name) : '') + ' \u00b7 ' + stats.doneSets + '/' + stats.totalSets + '</div>';
+    if (timer.active){
+      var pct = timer.duration > 0 ? Math.max(0, Math.min(100, (timer.remaining/timer.duration)*100)) : 0;
+      html += '<div class="pip-ex">' + escapeHtml(timer.exerciseName || '') + '</div>';
+      html += '<div class="rest-banner pip-banner show"><div class="rest-banner-top"><span class="rest-banner-label">Resting</span>' +
+        '<button class="rest-skip" data-action="skip-timer">Skip</button></div>' +
+        '<div class="rest-clock">' + fmtClock(timer.remaining) + '</div>' +
+        '<div class="rest-progress"><div class="rest-progress-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="rest-adjust-row">' +
+        '<button class="rest-adjust-btn" data-action="adjust-timer" data-delta="-15">\u221215s</button>' +
+        '<button class="rest-adjust-btn" data-action="adjust-timer" data-delta="15">+15s</button></div></div>';
+    } else {
+      html += '<div class="pip-ex">Ready</div><div class="mono-label" style="opacity:.7">Log a set to start resting</div>';
+    }
+    root.innerHTML = html;
+    root.onclick = handleClick;
+  }
+
+  /* ============ Event handling ============ */
+  function handleClick(e){
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.getAttribute('data-action');
+
+    if (action === 'open-editor'){ editorDayId = routine.days.length ? routine.days[0].id : null; view='editor'; render(); return; }
+    if (action === 'close-editor'){ view='home'; render(); return; }
+    if (action === 'select-tab'){ editorDayId = el.getAttribute('data-day'); render(); return; }
+
+    if (action === 'open-session'){
+      var targetDay = el.getAttribute('data-day');
+      if (currentDayId && targetDay !== currentDayId && sessionHasProgress()){
+        blockedDayId = targetDay;
+        renderHome();
+        return;
+      }
+      currentDayId = targetDay;
+      view = 'session'; render(); return;
+    }
+    if (action === 'blocked-cancel'){
+      if (el.classList.contains('modal-overlay') && e.target !== el) return;
+      blockedDayId = null; renderHome(); return;
+    }
+    if (action === 'blocked-resume'){
+      blockedDayId = null; view = 'session'; render(); return;
+    }
+    if (action === 'go-home'){ view = 'home'; render(); return; }
+    if (action === 'edit-from-session'){
+      editingExercise = { dayId: el.getAttribute('data-day'), exId: el.getAttribute('data-ex') };
+      renderSession();
+      return;
+    }
+
+    if (action === 'discard-open'){ pendingDiscard = true; renderSession(); return; }
+    if (action === 'discard-cancel'){
+      if (el.classList.contains('modal-overlay') && e.target !== el) return;
+      pendingDiscard = false; renderSession(); return;
+    }
+    if (action === 'discard-confirm'){
+      pendingDiscard = false; sessionDone = {};
+      skipTimer();
+      view = 'home'; render(); return;
+    }
+    if (action === 'end-workout'){
+      sessionDone = {};
+      skipTimer();
+      view = 'home'; render(); return;
+    }
+    if (action === 'exedit-close'){
+      if (el.classList.contains('modal-overlay') && e.target !== el) return;
+      editingExercise = null; renderSession(); return;
+    }
+    if (action === 'exedit-delete'){
+      var edDay = findDay(el.getAttribute('data-day'));
+      var edExId = el.getAttribute('data-ex');
+      var edEx = edDay && edDay.exercises.find(function(x){ return x.id === edExId; });
+      if (!edEx) return;
+      pendingConfirm = {
+        title: 'Delete this exercise?',
+        message: 'Delete \u201c' + edEx.name + '\u201d?',
+        confirmLabel: 'Delete',
+        onConfirm: function(){
+          edDay.exercises = edDay.exercises.filter(function(x){ return x.id !== edExId; });
+          Object.keys(sessionDone).forEach(function(k){ if (k.indexOf(edExId+':') === 0) delete sessionDone[k]; });
+          editingExercise = null;
+          saveRoutine();
+        }
+      };
+      renderSession(); return;
+    }
+
+    if (action === 'toggle-set'){
+      var exId = el.getAttribute('data-ex');
+      var idx = el.getAttribute('data-idx');
+      var key = exId + ':' + idx;
+      var wasDone = !!sessionDone[key];
+      if (wasDone){
+        delete sessionDone[key];
+        if (timer.active && timer.sourceKey === key) skipTimer();
+      } else {
+        sessionDone[key] = true;
+        var rest = parseInt(el.getAttribute('data-rest'), 10) || 0;
+        var exname = el.getAttribute('data-exname');
+        if (rest > 0) startRestTimer(rest, exname, key);
+      }
+      renderSession();
+      return;
+    }
+
+    if (action === 'skip-timer'){ skipTimer(); return; }
+    if (action === 'adjust-timer'){ adjustTimer(parseInt(el.getAttribute('data-delta'),10)); return; }
+    if (action === 'toggle-pip'){ togglePip(); return; }
+
+    if (action === 'rest-default'){
+      routine.restSeconds = Math.max(0, routine.restSeconds + parseInt(el.getAttribute('data-delta'),10));
+      saveRoutine(); render(); return;
+    }
+
+    if (action === 'add-day'){
+      var nd = { id: uid(), name: 'New day', exercises: [] };
+      routine.days.push(nd);
+      editorDayId = nd.id;
+      saveRoutine(); render(); return;
+    }
+    if (action === 'del-day'){
+      var delId = el.getAttribute('data-day');
+      var delDay = findDay(delId);
+      if (!delDay) return;
+      pendingConfirm = {
+        title: 'Delete this day?',
+        message: 'Delete \u201c' + delDay.name + '\u201d and all ' + delDay.exercises.length + ' exercises in it? This can\u2019t be undone.',
+        confirmLabel: 'Delete',
+        onConfirm: function(){
+          routine.days = routine.days.filter(function(d){ return d.id !== delId; });
+          if (editorDayId === delId) editorDayId = routine.days.length ? routine.days[0].id : null;
+          saveRoutine();
+        }
+      };
+      render(); return;
+    }
+    if (action === 'add-ex'){
+      var d = findDay(el.getAttribute('data-day'));
+      if (d){
+        var last = d.exercises[d.exercises.length - 1];
+        d.exercises.push({
+          id: uid(),
+          name: 'New exercise',
+          sets: last ? last.sets : 3,
+          reps: last ? last.reps : 10,
+          weight: last ? last.weight : 0
+        });
+      }
+      saveRoutine(); render(); return;
+    }
+    if (action === 'del-ex'){
+      var d2 = findDay(el.getAttribute('data-day'));
+      var exId2 = el.getAttribute('data-ex');
+      var exToDel = d2 && d2.exercises.find(function(x){ return x.id === exId2; });
+      if (!exToDel) return;
+      pendingConfirm = {
+        title: 'Delete this exercise?',
+        message: 'Delete \u201c' + exToDel.name + '\u201d?',
+        confirmLabel: 'Delete',
+        onConfirm: function(){
+          d2.exercises = d2.exercises.filter(function(x){ return x.id !== exId2; });
+          if (editingExercise && editingExercise.exId === exId2) editingExercise = null;
+          saveRoutine();
+        }
+      };
+      render(); return;
+    }
+    if (action === 'restore-routine'){
+      pendingConfirm = {
+        title: 'Restore your routine?',
+        message: 'Reload your Push/Pull/Legs routine? This replaces whatever is currently in the editor.',
+        confirmLabel: 'Restore',
+        onConfirm: function(){
+          routine = defaultRoutine();
+          saveRoutine();
+        }
+      };
+      render(); return;
+    }
+    if (action === 'confirm-cancel'){
+      if (el.classList.contains('modal-overlay') && e.target !== el) return;
+      pendingConfirm = null; render(); return;
+    }
+    if (action === 'confirm-yes'){
+      if (pendingConfirm && pendingConfirm.onConfirm) pendingConfirm.onConfirm();
+      pendingConfirm = null; render(); return;
+    }
+  }
+
+  function handleInput(e){
+    var el = e.target.closest('[data-field]');
+    if (!el) return;
+    var field = el.getAttribute('data-field');
+    var d = findDay(el.getAttribute('data-day'));
+    if (!d) return;
+
+    if (field === 'day-name'){ d.name = el.value; saveRoutine(); return; }
+
+    var ex = d.exercises.find(function(x){ return x.id === el.getAttribute('data-ex'); });
+    if (!ex) return;
+
+    if (field === 'ex-name'){ ex.name = el.value; saveRoutine(); return; }
+    if (field === 'ex-sets'){ ex.sets = Math.max(1, parseInt(el.value,10) || 1); saveRoutine(); return; }
+    if (field === 'ex-reps'){ ex.reps = Math.max(0, parseInt(el.value,10) || 0); saveRoutine(); return; }
+    if (field === 'ex-weight'){
+      var wv = el.value.trim().toLowerCase();
+      ex.weight = (wv === '' || wv === 'bodyweight' || wv === 'bw') ? 0 : Math.max(0, parseFloat(el.value) || 0);
+      saveRoutine(); return;
+    }
+  }
+
+  appEl.addEventListener('click', handleClick);
+  appEl.addEventListener('input', handleInput);
+  appEl.addEventListener('focusout', function(e){
+    var el = e.target.closest('[data-field="day-name"], [data-field="ex-name"]');
+    if (el) render();
+  });
+
+  /* ============ Boot ============ */
+  loadRoutine().then(render).catch(render);
+})();
+</script>
+</body>
+</html>
