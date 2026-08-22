@@ -31,3 +31,7 @@ If you were using this inside claude.ai as an Artifact before, note that its syn
 ## Making changes later
 
 It's a single `index.html` file — all the HTML, CSS, and JS are in one place, no build step. Edit it directly and push to update the live site (Pages usually redeploys within a minute of a push).
+
+### Updating the favicon/icons later
+
+Browsers cache favicons aggressively — replacing the image files alone often isn't enough to make a new icon show up. The `<link>` tags in `index.html` (and the entries in `manifest.json`) include a `?v=3` on each icon URL for this reason. Next time you change the icon files, bump that number (`?v=4`, etc.) in both `index.html` and `manifest.json` so browsers treat them as new files instead of reusing the cached version.
