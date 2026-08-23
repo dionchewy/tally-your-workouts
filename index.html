@@ -456,7 +456,7 @@
   var sessionDone = {}; // "exId:idx" -> true
   var pendingSync = null;
 
-  var timer = { active:false, remaining:0, duration:0, exerciseName:'', intervalId:null, sourceKey:null };
+  var timer = { active:false, remaining:0, duration:0, exerciseName:'', intervalId:null, sourceKey:null, endTime:0, finished:false, finishTimeoutId:null };
   var pip = { win:null };
   var notifPermRequested = false;
   var audioCtx = null;
@@ -636,25 +636,29 @@
   /* ============ Timer ============ */
   function startRestTimer(seconds, exerciseName, sourceKey){
     clearInterval(timer.intervalId);
+    clearTimeout(timer.finishTimeoutId);
     ensureNotifPermission();
     timer.active = true;
     timer.duration = seconds;
     timer.remaining = seconds;
+    timer.endTime = Date.now() + seconds * 1000;
     timer.exerciseName = exerciseName;
     timer.sourceKey = sourceKey || null;
+    timer.finished = false;
     timer.intervalId = setInterval(tickTimer, 1000);
     renderTimer();
   }
 
   function tickTimer(){
-    timer.remaining -= 1;
-    if (timer.remaining <= 0){
-      timer.remaining = 0;
+    if (!timer.active) return;
+    timer.remaining = Math.max(0, Math.round((timer.endTime - Date.now()) / 1000));
+    if (timer.remaining <= 0 && !timer.finished){
+      timer.finished = true;
       clearInterval(timer.intervalId);
       playBeep();
       vibrate([200,80,200]);
       maybeNotify('Rest over', timer.exerciseName ? timer.exerciseName + ' \u2014 back at it' : 'Time for your next set');
-      setTimeout(function(){
+      timer.finishTimeoutId = setTimeout(function(){
         timer.active = false;
         timer.sourceKey = null;
         renderTimer();
@@ -665,17 +669,31 @@
 
   function adjustTimer(delta){
     if (!timer.active) return;
-    timer.remaining = Math.max(0, timer.remaining + delta);
+    timer.endTime += delta * 1000;
+    timer.remaining = Math.max(0, Math.round((timer.endTime - Date.now()) / 1000));
     timer.duration = Math.max(timer.duration, timer.remaining);
     renderTimer();
   }
 
   function skipTimer(){
     clearInterval(timer.intervalId);
+    clearTimeout(timer.finishTimeoutId);
     timer.active = false;
     timer.sourceKey = null;
     renderTimer();
   }
+
+  /* Catch up instantly whenever the app becomes visible again — iOS suspends
+     JS while backgrounded, so ticks get missed; this recomputes real elapsed
+     time the moment you return instead of waiting for the next tick. */
+  function catchUpTimer(){
+    if (timer.active) tickTimer();
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) catchUpTimer();
+  });
+  window.addEventListener('pageshow', catchUpTimer);
+  window.addEventListener('focus', catchUpTimer);
 
   /* ============ Rendering ============ */
   var appEl = document.getElementById('app');
